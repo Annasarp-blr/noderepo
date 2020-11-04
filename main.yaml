@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 
 Parameters:
- EC2InstanceType:
+  EC2InstanceType:
     Type: String
   EC2AMI:
     Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
@@ -20,6 +20,20 @@ Parameters:
     Default: master
     Description: 'The source GitHub branch.'
 Resources:
+  CodePipelineS3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Ref CodePipelineBucket
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
@@ -28,52 +42,52 @@ Resources:
         Location: !Ref CodePipelineBucket
         Type: S3
         RoleArn: !GetAtt DeploymentRole.Arn
-    Stages:
-      - Name: Source
-        Actions:
-          - Name: Source
-            ActionTypeId:
-              Category: Source
-              Owner: ThirdParty
-              Version: 1
-              Provider: GitHub
-            OutputArtifacts:
-              - Name: Source
-            Configuration:
-              Owner: !Ref GitHubOwner
-              Repo: !Ref GitHubRepo
-              Branch: !Ref GitHubBranch
-              PollForSourceChanges: false
-            RunOrder: 1
-      - Name: Build
-        Actions:
-          - Name: Build
-            ActionTypeId:
-              Category: Build
-              Owner: AWS
-              Version: 1
-              Provider: CodeBuild
-            InputArtifacts:
-              - Name: Source
-            OutputArtifacts:
-              - Name: Build
-            Configuration:
-              ProjectName: !Ref BuildProject
-            RunOrder: 1
-      - Name: Staging
-        Actions:
-          - Name: Staging
-            InputArtifacts:
-              - Name: Build
-            ActionTypeId:
-              Category: Deploy
-              Owner: AWS
-              Version: 1
-              Provider: CodeDeploy
-            Configuration:
-              ApplicationName: !Ref DeploymentApplication
-              DeploymentGroupName: !Ref StagingDeploymentGroup
-            RunOrder: 1
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: 1
+                Provider: GitHub
+              OutputArtifacts:
+                - Name: Source
+              Configuration:
+                Owner: !Ref GitHubOwner
+                Repo: !Ref GitHubRepo
+                Branch: !Ref GitHubBranch
+                PollForSourceChanges: false
+              RunOrder: 1
+        - Name: Build
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              InputArtifacts:
+                - Name: Source
+              OutputArtifacts:
+                - Name: Build
+              Configuration:
+                ProjectName: !Ref BuildProject
+              RunOrder: 1
+        - Name: Staging
+          Actions:
+            - Name: Staging
+              InputArtifacts:
+                - Name: Build
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: CodeDeploy
+              Configuration:
+                ApplicationName: !Ref DeploymentApplication
+                DeploymentGroupName: !Ref StagingDeploymentGroup
+              RunOrder: 1
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -212,15 +226,15 @@ Resources:
                  # START
            echo "Setting up NodeJS Environment"
            curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
-          # Dot source the files to ensure that variables are available within the current shell
-          . /home/ec2-user/.nvm/nvm.sh
-          . /home/ec2-user/.bashrc
-          # Install NVM, NPM, Node.JS
-          nvm alias default v12.7.0
-          nvm install v12.7.0
-          nvm use v12.7.0
+           # Dot source the files to ensure that variables are available within the current shell
+           . /home/ec2-user/.nvm/nvm.sh
+           . /home/ec2-user/.bashrc
+           # Install NVM, NPM, Node.JS
+           nvm alias default v12.7.0
+           nvm install v12.7.0
+           nvm use v12.7.0
 
-          # Create log directory
+           # Create log directory
            mkdir -p /home/ec2-user/app/logs
            EOF
 
