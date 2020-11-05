@@ -239,7 +239,7 @@ Resources:
            nvm alias default v12.7.0
 
            # Create log directory
-           mkdir -p /home/ec2-user/app/logs
+           mkdir -p /home/ec2-user/app/release/logs
            EOF
 
            chown ec2-user:ec2-user /tmp/install_script.sh && chmod a+x /tmp/install_script.sh
