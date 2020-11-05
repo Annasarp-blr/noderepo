@@ -9,15 +9,36 @@ Parameters:
     Description: 'The S3 bucket for CodePipeline artifacts.'
   GitHubOwner:
     Type: String
+    Default: Annasarp-blr
     Description: 'The username of the source GitHub repo.'
   GitHubRepo:
     Type: String
+    Default: noderepo
     Description: 'The source GitHub repo name (without the username).'
   GitHubBranch:
     Type: String
     Default: main
     Description: 'The source GitHub branch.'
+  GitHubPersonalAccessToken:
+    Type: String
+    Description: 'A GitHub personal access token with "repo" and "admin:repo_hook" permissions.'
+    
 Resources:
+  DeploymentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: Allow
+          Principal:
+            Service:
+              - codepipeline.amazonaws.com
+              - codedeploy.amazonaws.com
+              - codebuild.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/PowerUserAccess
   CodePipelineS3Bucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
@@ -36,10 +57,10 @@ Resources:
     Type: AWS::CodePipeline::Pipeline
     Properties:
       Name: !Ref AWS::StackName
+      RoleArn: !GetAtt DeploymentRole.Arn
       ArtifactStore:
         Location: !Ref CodePipelineBucket
         Type: S3
-        RoleArn: !GetAtt DeploymentRole.Arn
       Stages:
         - Name: Source
           Actions:
@@ -55,6 +76,7 @@ Resources:
                 Owner: !Ref GitHubOwner
                 Repo: !Ref GitHubRepo
                 Branch: !Ref GitHubBranch
+                OAuthToken: !Ref GitHubPersonalAccessToken
                 PollForSourceChanges: false
               RunOrder: 1
         - Name: Build
@@ -107,21 +129,6 @@ Resources:
     Properties:
       Roles:
         - Ref: InstanceRole
-  DeploymentRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          Effect: Allow
-          Principal:
-            Service:
-              - codepipeline.amazonaws.com
-              - codedeploy.amazonaws.com
-              - codebuild.amazonaws.com
-          Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/PowerUserAccess
   BuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
@@ -188,11 +195,10 @@ Resources:
         config:
           packages: 
             yum:
-              wget: []
-              unzip: []
+              ruby: []
           files:
             /home/ec2-user/install: 
-              source: !Sub "https://aws-codedeploy-${AWS::Region}.s3.amazonaws.com/latest/install"
+              source: !Sub  "https://aws-codedeploy-ap-south-1.s3.amazonaws.com/latest/install"
               mode: "000755" # executable
           commands:
             00-install-cd-agent: 
